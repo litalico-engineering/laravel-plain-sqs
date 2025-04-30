@@ -15,16 +15,16 @@ class Queue extends SqsQueue
 {
     /**
      * Create a payload string from the given job and data.
-     *
-     * @param  string  $job
-     * @param  mixed   $data
-     * @param  string  $queue
-     * @return string
+     * @param $job
+     * @param $queue
+     * @param $data
+     * @param $delay
+     * @return false|string
      */
-    protected function createPayload($job, $data = '', $queue = null)
+    protected function createPayload($job, $queue = null, $data = '', $delay = null)
     {
         if (!$job instanceof DispatcherJob) {
-            return parent::createPayload($job, $data, $queue);
+            return parent::createPayload($job, $queue, $data, $delay);
         }
 
         $handlerJob = $this->getClass($queue) . '@handle';
@@ -72,14 +72,7 @@ class Queue extends SqsQueue
 
             $response = $this->modifyPayload($response['Messages'][0], $class);
 
-            if (preg_match(
-                '/(5\.[4-8]\..*)|(6\.[0-9]*\..*)|(7\.[0-9]*\..*)|(8\.[0-9]*\..*)|(9\.[0-9]*\..*)|(10\.[0-9]*\..*)|(11\.[0-9]*\..*)|(12\.[0-9]*\..*)/',
-                $this->container->version())
-            ) {
-                return new SqsJob($this->container, $this->sqs, $response, $this->connectionName, $queue);
-            }
-
-            return new SqsJob($this->container, $this->sqs, $queue, $response);
+            return new SqsJob($this->container, $this->sqs, $response, $this->connectionName, $queue);
         }
     }
 
