@@ -6,6 +6,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\Config;
 
 class DispatcherJob implements ShouldQueue
 {
@@ -37,7 +38,7 @@ class DispatcherJob implements ShouldQueue
     {
         if (! $this->isPlain()) {
             return [
-                'job' => app('config')->get('sqs-plain.default-handler'),
+                'job' => Config::get('sqs-plain.default-handler'),
                 'data' => $this->data
             ];
         }
