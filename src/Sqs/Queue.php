@@ -3,6 +3,7 @@
 namespace Dusterio\PlainSqs\Sqs;
 
 use Dusterio\PlainSqs\Jobs\DispatcherJob;
+use Illuminate\Queue\InvalidPayloadException;
 use Illuminate\Queue\SqsQueue;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Queue\Jobs\SqsJob;
@@ -16,7 +17,7 @@ class Queue extends SqsQueue
 {
     /**
      * @inheritDoc
-     * @throws JsonException
+     * @throws InvalidPayloadException|JsonException
      */
     protected function createPayload($job, $queue = null, $data = '', $delay = null)
     {
