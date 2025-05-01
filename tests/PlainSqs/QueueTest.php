@@ -1,11 +1,14 @@
 <?php
 
-namespace Dusterio\PlainSqs\Tests;
+namespace Tests\PlainSqs;
 
 use Aws\Sqs\SqsClient;
 use Dusterio\PlainSqs\Jobs\DispatcherJob;
 use Dusterio\PlainSqs\Sqs\Queue;
+use Illuminate\Support\Facades\Config;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Tests\FullAccessWrapper;
 
 /**
  * Class QueueTest
@@ -14,27 +17,41 @@ use PHPUnit\Framework\TestCase;
 class QueueTest extends TestCase
 {
     /**
-     * @test
+     * @throws
      */
-    public function class_named_is_derived_from_queue_name()
+    #[Test]
+    public function class_named_is_derived_from_queue_name(): void
     {
-
+        setup:
+        $sqsMock = $this->createMock(SqsClient::class);
         $content = [
             'test' => 'test'
         ];
 
+        Config::shouldReceive('get')
+            ->once()
+            ->with('sqs-plain.handlers')
+            ->andReturn([]);
+
+        Config::shouldReceive('get')
+            ->twice()
+            ->with('sqs-plain.default-handler')
+            ->andReturn('duummy');
+
         $job = new DispatcherJob($content);
 
-        $queue = $this->getMockBuilder(Queue::class)
-            ->disableOriginalConstructor()
-            ->getMock();
+        $queue = new Queue($sqsMock,'test-queue');
 
-        $method = new \ReflectionMethod(
-            'Dusterio\PlainSqs\Sqs\Queue', 'createPayload'
+        /** @var Queue&FullAccessWrapper $instance */
+        $instance = new FullAccessWrapper($queue);
+
+        when:
+        $actual = $instance->createPayload($job, 'test-queue', json_encode($content, JSON_THROW_ON_ERROR), 0);
+
+        then:
+        self::assertSame(
+            '{"job":"duummy@handle","data":{"job":"duummy","data":{"test":"test"}}}',
+            $actual,
         );
-
-        $method->setAccessible(true);
-
-        //$response = $method->invokeArgs($queue, [$job]);
     }
 }

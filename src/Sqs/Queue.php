@@ -43,7 +43,8 @@ class Queue extends SqsQueue
             return Config::get('sqs-plain.default-handler');
         }
 
-        $queue = end(explode('/', $queue));
+        $array = explode('/', $queue);
+        $queue = end($array);
 
         if (array_key_exists($queue, Config::get('sqs-plain.handlers'))) {
             return Config::get('sqs-plain.handlers')[$queue];
