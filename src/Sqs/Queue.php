@@ -1,17 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dusterio\PlainSqs\Sqs;
 
+use Dusterio\PlainSqs\ConfigHelper;
 use Dusterio\PlainSqs\Jobs\DispatcherJob;
 use Illuminate\Queue\InvalidPayloadException;
+use Illuminate\Queue\Jobs\SqsJob;
 use Illuminate\Queue\SqsQueue;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Queue\Jobs\SqsJob;
 use JsonException;
+
+use function array_key_exists;
+use function count;
+use function is_array;
 
 /**
  * Class CustomSqsQueue
- * @package App\Services
  */
 class Queue extends SqsQueue
 {
@@ -19,7 +25,7 @@ class Queue extends SqsQueue
      * @inheritDoc
      * @throws InvalidPayloadException|JsonException
      */
-    protected function createPayload($job, $queue = null, $data = '', $delay = null)
+    protected function createPayload($job, $queue, $data = '', $delay = null)
     {
         if (!$job instanceof DispatcherJob) {
             return parent::createPayload($job, $queue, $data, $delay);
@@ -30,26 +36,24 @@ class Queue extends SqsQueue
         if ($job->isPlain()) {
             return json_encode($job->getPayload(), JSON_THROW_ON_ERROR);
         }
+
         return json_encode(['job' => $handlerJob, 'data' => $job->getPayload()], JSON_THROW_ON_ERROR);
     }
 
-    /**
-     * @param string|null $queue
-     * @return string
-     */
-    private function getClass(?string $queue = null): string
+    private function getClass(string|null $queue = null): string
     {
-        if (!$queue) {
-            return Config::get('sqs-plain.default-handler');
+        if (in_array($queue, ['0', '', null], true)) {
+            return ConfigHelper::defaultHandler();
         }
 
         $array = explode('/', $queue);
-        $queue = end($array);
+        $queueKey = end($array);
 
-        if (array_key_exists($queue, Config::get('sqs-plain.handlers'))) {
-            return Config::get('sqs-plain.handlers')[$queue];
+        if (array_key_exists($queueKey, Config::get('sqs-plain.handlers'))) {
+            return Config::get('sqs-plain.handlers')[$queueKey];
         }
-        return Config::get('sqs-plain.default-handler');
+
+        return ConfigHelper::defaultHandler();
     }
 
     /**
@@ -77,15 +81,14 @@ class Queue extends SqsQueue
 
             return new SqsJob($this->container, $this->sqs, $response, $this->connectionName, $queue);
         }
+
+        return null;
     }
 
     /**
-     * @param string|array $payload
-     * @param string $class
-     * @return array
      * @throws JsonException
      */
-    private function modifyPayload(string|array $payload,string $class): array
+    private function modifyPayload(string|array $payload, string $class): array
     {
         if (! is_array($payload)) {
             $payload = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
@@ -96,7 +99,7 @@ class Queue extends SqsQueue
         $body = [
             'job' => $class . '@handle',
             'data' => $body['data'] ?? $body,
-            'uuid' => $payload['MessageId']
+            'uuid' => $payload['MessageId'],
         ];
 
         $payload['Body'] = json_encode($body, JSON_THROW_ON_ERROR);

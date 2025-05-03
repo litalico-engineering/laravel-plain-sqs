@@ -1,45 +1,39 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dusterio\PlainSqs\Jobs;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Config;
 
 class DispatcherJob implements ShouldQueue
 {
-    use InteractsWithQueue, Queueable, SerializesModels;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
 
-    /**
-     * @var mixed
-     */
-    protected $data;
+    protected mixed $data;
 
-    /**
-     * @var bool
-     */
-    protected $plain = false;
+    protected bool $plain = false;
 
     /**
      * DispatchedJob constructor.
-     * @param $data
      */
-    public function __construct($data)
+    public function __construct(mixed $data)
     {
         $this->data = $data;
     }
 
-    /**
-     * @return mixed
-     */
     public function getPayload()
     {
         if (! $this->isPlain()) {
             return [
                 'job' => Config::get('sqs-plain.default-handler'),
-                'data' => $this->data
+                'data' => $this->data,
             ];
         }
 
@@ -47,20 +41,16 @@ class DispatcherJob implements ShouldQueue
     }
 
     /**
-     * @param bool $plain
      * @return $this
      */
-    public function setPlain($plain = true)
+    public function setPlain(bool $plain = true): self
     {
         $this->plain = $plain;
 
         return $this;
     }
 
-    /**
-     * @return bool
-     */
-    public function isPlain()
+    public function isPlain(): bool
     {
         return $this->plain;
     }

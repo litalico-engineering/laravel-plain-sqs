@@ -1,23 +1,27 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\PlainSqs;
 
 use Aws\Sqs\SqsClient;
 use Dusterio\PlainSqs\Jobs\DispatcherJob;
 use Dusterio\PlainSqs\Sqs\Queue;
 use Illuminate\Support\Facades\Config;
+use JsonException;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\MockObject\Exception;
 use PHPUnit\Framework\TestCase;
 use Tests\FullAccessWrapper;
 
 /**
  * Class QueueTest
- * @package Dusterio\PlainSqs\Tests
  */
 class QueueTest extends TestCase
 {
     /**
-     * @throws
+     * @return void
+     * @throws JsonException|Exception
      */
     #[Test]
     public function class_named_is_derived_from_queue_name(): void
@@ -25,7 +29,7 @@ class QueueTest extends TestCase
         setup:
         $sqsMock = $this->createMock(SqsClient::class);
         $content = [
-            'test' => 'test'
+            'test' => 'test',
         ];
 
         Config::shouldReceive('get')
@@ -40,10 +44,10 @@ class QueueTest extends TestCase
 
         $job = new DispatcherJob($content);
 
-        $queue = new Queue($sqsMock,'test-queue');
+        $queue = new Queue($sqsMock, 'test-queue');
 
-        /** @var Queue&FullAccessWrapper $instance */
         $instance = new FullAccessWrapper($queue);
+        assert($instance instanceof Queue);
 
         when:
         $actual = $instance->createPayload($job, 'test-queue', json_encode($content, JSON_THROW_ON_ERROR), 0);

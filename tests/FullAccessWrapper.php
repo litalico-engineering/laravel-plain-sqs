@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Tests;
@@ -9,17 +10,22 @@ use ReflectionException;
 
 /**
  * for private, protected method, property access
+ * @template T of object
  */
 readonly class FullAccessWrapper
 {
-    /** @var ReflectionClass reflection */
+    /** @var ReflectionClass<T> $reflection */
     private ReflectionClass $reflection;
 
+    /** @var T $targetInstance */
+    private object $targetInstance;
+
     /**
-     * @param object $targetInstance
+     * @param T $targetInstance
      */
-    public function __construct(private object $targetInstance)
+    public function __construct(object $targetInstance)
     {
+        $this->targetInstance = $targetInstance;
         $this->reflection = new ReflectionClass($targetInstance);
     }
 
@@ -29,7 +35,7 @@ readonly class FullAccessWrapper
      * @return mixed
      * @throws ReflectionException
      */
-    public function __call(string $methodName, array $args)
+    public function __call(string $methodName, array $args): mixed
     {
         $method = $this->reflection->getMethod($methodName);
         $method->setAccessible(true);
@@ -39,11 +45,11 @@ readonly class FullAccessWrapper
 
     /**
      * @param string $name
-     * @return mixed|void
-     * @throws ReflectionException
+     * @return mixed
      * @throws ErrorException
+     * @throws ReflectionException
      */
-    public function __get(string $name)
+    public function __get(string $name): mixed
     {
         if ($this->reflection->hasProperty($name)) {
             $property = $this->reflection->getProperty($name);
@@ -52,13 +58,10 @@ readonly class FullAccessWrapper
             return $property->getValue($this->targetInstance);
         }
 
-        throw new ErrorException("ErrorException : Undefined property: $name");
+        throw new ErrorException('ErrorException : Undefined property: ' . $name);
     }
 
     /**
-     * @param string $name
-     * @param mixed $value
-     * @return void
      * @throws ErrorException
      * @throws ReflectionException
      */
@@ -66,18 +69,18 @@ readonly class FullAccessWrapper
     {
         if ($this->reflection->hasProperty($name)) {
             $property = $this->reflection->getProperty($name);
-
+            $property->setAccessible(true);
             $property->setValue($this->targetInstance, $value);
         } else {
-            throw new ErrorException("ErrorException : Undefined property: $name");
+            throw new ErrorException('ErrorException : Undefined property: ' . $name);
         }
     }
 
     /**
      * Get reflection class
-     * @return Object
+     * @return T
      */
-    public function getInstance(): object
+    public function getInstance()
     {
         return $this->targetInstance;
     }

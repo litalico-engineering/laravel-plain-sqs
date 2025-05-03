@@ -1,12 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * List of plain SQS queues and their corresponding handling classes
  */
 return [
     'handlers' => [
-        'base-integrations-updates' => App\Jobs\HandlerJob::class,
+        'base-integrations-updates' => \Illuminate\Queue\Jobs\Job::class,
     ],
-
-    'default-handler' => App\Jobs\HandlerJob::class
+    'default-handler' => \Illuminate\Queue\Jobs\Job::class
 ];
