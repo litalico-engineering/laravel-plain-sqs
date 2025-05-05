@@ -10,6 +10,7 @@ use RuntimeException;
 
 use function is_array;
 use function is_string;
+use function PHPStan\dumpType;
 
 class ConfigHelper
 {
@@ -19,15 +20,13 @@ class ConfigHelper
     public static function defaultHandler(): string
     {
         $value = Config::get('sqs-plain.default-handler');
-        if (
+
+        return match (true) {
             is_string($value) &&
             class_exists($value) &&
-            is_a($value, Job::class, true)
-        ) {
-            return $value;
-        }
-
-        throw new RuntimeException('sqs-plain.default-handler should be a class string');
+            is_a($value, Job::class, true) => $value,
+            default => throw new RuntimeException('sqs-plain.default-handler should be a class string'),
+        };
     }
 
     /**
@@ -36,22 +35,23 @@ class ConfigHelper
     public static function handlers(): array
     {
         $handlers = Config::get('sqs-plain.handlers');
-        if (!is_array($handlers)) {
-            throw new RuntimeException('sqs-plain.default-handler should be an array');
-        }
 
-        $response = [];
-        foreach ($handlers as $key => $handler) {
-            if (
-                !(is_string($key) && is_string($handler) && class_exists($handler) && is_a($handler, Job::class, true))
-            ) {
-                throw new RuntimeException('sqs-plain.handlers should be an array of class strings');
-            }
+        return match(true) {
+            is_array($handlers) => (static function (array $handlers): array {
+                $response = [];
+                foreach ($handlers as $key => $handler) {
+                    match(true) {
+                        is_string($key) &&
+                        is_string($handler) &&
+                        is_a($handler, Job::class, true) => $response[$key] = $handler,
+                        default => throw new RuntimeException('sqs-plain.handlers should be an array of class strings'),
+                    };
+                }
 
-            $response[$key] = $handler;
-        }
-
-        return $response;
+                return $response;
+            })($handlers),
+            default => throw new RuntimeException('sqs-plain.handlers should be an array of class strings'),
+        };
     }
 
     /**
@@ -59,9 +59,9 @@ class ConfigHelper
      */
     public static function handlerByKey(string|null $key): string
     {
-        return match(true) {
-            $key === null => self::defaultHandler(),
-            default => self::handlers()[$key] ?? self::defaultHandler(),
+        return match (true) {
+            isset(self::handlers()[$key]) => self::handlers()[$key],
+            default => self::defaultHandler(),
         };
     }
 }

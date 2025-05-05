@@ -82,7 +82,7 @@ class Queue extends SqsQueue
      */
     private function modifyPayload(string|array $payload, string $class): array
     {
-        $body = match (true){
+        $body = match (true) {
             is_string($payload) => json_decode($payload, true, 512, JSON_THROW_ON_ERROR),
             isset($payload['Body']) && is_string($payload['Body']) => json_decode($payload['Body'], true, 512, JSON_THROW_ON_ERROR),
         };
