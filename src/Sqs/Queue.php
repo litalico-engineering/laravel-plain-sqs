@@ -35,16 +35,14 @@ class Queue extends SqsQueue
 
     private function getClass(string|null $queue = null): string
     {
-        $key = match(true) {
-            $queue === null => $queue,
+        return match(true) {
+            $queue === null => ConfigHelper::defaultHandler(),
             default => (static function (string $queue): string {
                 $array = explode('/', $queue);
 
-                return end($array);
+                return ConfigHelper::handlerByKey(end($array));
             })($queue),
         };
-
-        return ConfigHelper::handlerByKey($key);
     }
 
     /**
