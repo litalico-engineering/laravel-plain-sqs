@@ -30,9 +30,7 @@ readonly class FullAccessWrapper
     }
 
     /**
-     * @param string $methodName
      * @param array<int,mixed> $args
-     * @return mixed
      * @throws ReflectionException
      */
     public function __call(string $methodName, array $args): mixed
@@ -44,8 +42,6 @@ readonly class FullAccessWrapper
     }
 
     /**
-     * @param string $name
-     * @return mixed
      * @throws ErrorException
      * @throws ReflectionException
      */
@@ -80,7 +76,7 @@ readonly class FullAccessWrapper
      * Get reflection class
      * @return T
      */
-    public function getInstance()
+    public function getInstance(): object
     {
         return $this->targetInstance;
     }

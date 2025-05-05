@@ -8,5 +8,5 @@ parameters:
     - .lint
   tmpDir: ./.lint/.stan
   ignoreErrors:
-     - identifier: function.impossibleType
-     - identifier: instanceof.alwaysFalse
+     - identifier: varTag.nativeType
+     - identifier: method.protected

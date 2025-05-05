@@ -20,7 +20,6 @@ use Tests\FullAccessWrapper;
 class QueueTest extends TestCase
 {
     /**
-     * @return void
      * @throws JsonException|Exception
      */
     #[Test]
@@ -46,8 +45,10 @@ class QueueTest extends TestCase
 
         $queue = new Queue($sqsMock, 'test-queue');
 
+        /**
+         * @var Queue $instance
+         */
         $instance = new FullAccessWrapper($queue);
-        assert($instance instanceof Queue);
 
         when:
         $actual = $instance->createPayload($job, 'test-queue', json_encode($content, JSON_THROW_ON_ERROR), 0);

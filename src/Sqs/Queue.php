@@ -9,12 +9,11 @@ use Dusterio\PlainSqs\Jobs\DispatcherJob;
 use Illuminate\Queue\InvalidPayloadException;
 use Illuminate\Queue\Jobs\SqsJob;
 use Illuminate\Queue\SqsQueue;
-use Illuminate\Support\Facades\Config;
 use JsonException;
 
-use function array_key_exists;
-use function count;
 use function is_array;
+use function is_string;
+use function PHPStan\dumpType;
 
 /**
  * Class CustomSqsQueue
@@ -27,33 +26,25 @@ class Queue extends SqsQueue
      */
     protected function createPayload($job, $queue, $data = '', $delay = null)
     {
-        if (!$job instanceof DispatcherJob) {
-            return parent::createPayload($job, $queue, $data, $delay);
-        }
-
-        $handlerJob = $this->getClass($queue) . '@handle';
-
-        if ($job->isPlain()) {
-            return json_encode($job->getPayload(), JSON_THROW_ON_ERROR);
-        }
-
-        return json_encode(['job' => $handlerJob, 'data' => $job->getPayload()], JSON_THROW_ON_ERROR);
+        return match(true) {
+            $job instanceof DispatcherJob && $job->isPlain() => json_encode($job->getPayload(), JSON_THROW_ON_ERROR),
+            $job instanceof DispatcherJob => json_encode(['job' => "{$this->getClass($queue)}@handle", 'data' => $job->getPayload()], JSON_THROW_ON_ERROR),
+            default => parent::createPayload($job, $queue, $data, $delay)
+        };
     }
 
     private function getClass(string|null $queue = null): string
     {
-        if (in_array($queue, ['0', '', null], true)) {
-            return ConfigHelper::defaultHandler();
-        }
+        $key = match(true) {
+            $queue === null => $queue,
+            default => (static function (string $queue): string {
+                $array = explode('/', $queue);
 
-        $array = explode('/', $queue);
-        $queueKey = end($array);
+                return end($array);
+            })($queue),
+        };
 
-        if (array_key_exists($queueKey, Config::get('sqs-plain.handlers'))) {
-            return Config::get('sqs-plain.handlers')[$queueKey];
-        }
-
-        return ConfigHelper::defaultHandler();
+        return ConfigHelper::handlerByKey($key);
     }
 
     /**
@@ -69,20 +60,21 @@ class Queue extends SqsQueue
             'AttributeNames' => ['ApproximateReceiveCount'],
         ]);
 
-        if (isset($response['Messages']) && count($response['Messages']) > 0) {
-            $queueId = explode('/', $queue);
-            $queueId = array_pop($queueId);
-
-            $class = (array_key_exists($queueId, $this->container['config']->get('sqs-plain.handlers')))
-                ? $this->container['config']->get('sqs-plain.handlers')[$queueId]
-                : $this->container['config']->get('sqs-plain.default-handler');
-
-            $response = $this->modifyPayload($response['Messages'][0], $class);
-
-            return new SqsJob($this->container, $this->sqs, $response, $this->connectionName, $queue);
+        if (!(isset($response['Messages']) && is_array($response['Messages']) && $response['Messages'] !== [])) {
+            return null;
         }
 
-        return null;
+        $queueIds = explode('/', $queue);
+        $queueId = array_pop($queueIds);
+
+        $class = ConfigHelper::handlerByKey($queueId);
+
+        $payload = $response['Messages'][0] ?? [];
+        dumpType($response['Messages']);
+
+        $response = $this->modifyPayload($payload, $class);
+
+        return new SqsJob($this->container, $this->sqs, $response, $this->connectionName, $queue);
     }
 
     /**
@@ -90,11 +82,10 @@ class Queue extends SqsQueue
      */
     private function modifyPayload(string|array $payload, string $class): array
     {
-        if (! is_array($payload)) {
-            $payload = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
-        }
-
-        $body = json_decode($payload['Body'], true, 512, JSON_THROW_ON_ERROR);
+        $body = match (true){
+            is_string($payload) => json_decode($payload, true, 512, JSON_THROW_ON_ERROR),
+            isset($payload['Body']) && is_string($payload['Body']) => json_decode($payload['Body'], true, 512, JSON_THROW_ON_ERROR),
+        };
 
         $body = [
             'job' => $class . '@handle',
