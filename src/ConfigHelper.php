@@ -10,7 +10,6 @@ use RuntimeException;
 
 use function is_array;
 use function is_string;
-use function PHPStan\dumpType;
 
 class ConfigHelper
 {
@@ -35,23 +34,22 @@ class ConfigHelper
     public static function handlers(): array
     {
         $handlers = Config::get('sqs-plain.handlers');
-
-        return match(true) {
-            is_array($handlers) => (static function (array $handlers): array {
-                $response = [];
-                foreach ($handlers as $key => $handler) {
-                    match(true) {
-                        is_string($key) &&
-                        is_string($handler) &&
-                        is_a($handler, Job::class, true) => $response[$key] = $handler,
-                        default => throw new RuntimeException('sqs-plain.handlers should be an array of class strings'),
-                    };
-                }
-
-                return $response;
-            })($handlers),
+        $arrayHandlers = match(true) {
+            is_array($handlers) => $handlers,
             default => throw new RuntimeException('sqs-plain.handlers should be an array of class strings'),
         };
+
+        $response = [];
+        foreach ($arrayHandlers as $key => $handler) {
+            match(true) {
+                is_string($key) &&
+                is_string($handler) &&
+                is_a($handler, Job::class, true) => $response[$key] = $handler,
+                default => throw new RuntimeException('sqs-plain.handlers should be an array of class strings'),
+            };
+        }
+
+        return $response;
     }
 
     /**
