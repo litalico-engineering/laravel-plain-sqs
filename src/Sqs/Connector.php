@@ -1,34 +1,47 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dusterio\PlainSqs\Sqs;
 
 use Aws\Sqs\SqsClient;
-use Illuminate\Support\Arr;
 use Illuminate\Queue\Connectors\SqsConnector;
-use Illuminate\Queue\Jobs\SqsJob;
+use Illuminate\Support\Arr;
+
+use function is_string;
 
 class Connector extends SqsConnector
 {
     /**
-     * Establish a queue connection.
-     *
-     * @param  array  $config
-     * @return \Illuminate\Contracts\Queue\Queue
+     * @inheritDoc
+     * @param array<string, mixed> $config
      */
     public function connect(array $config)
     {
         $config = $this->getDefaultConfiguration($config);
 
-        if (isset($config['key']) && isset($config['secret'])) {
+        if (isset($config['key'], $config['secret'])) {
             $config['credentials'] = Arr::only($config, ['key', 'secret']);
         }
 
-        $queue = new Queue(
-            new SqsClient($config),
-            $config['queue'],
-            Arr::get($config, 'prefix', '')
-        );
+        // Ensure queue is a string
+        $queueValue = $config['queue'] ?? null;
+        $queue = match(true) {
+            is_string($queueValue) => $queueValue,
+            default => '',
+        };
 
-        return $queue;
+        // Ensure prefix is a string
+        $prefixValue = $config['prefix'] ?? null;
+        $prefix = match(true) {
+            is_string($prefixValue) => $prefixValue,
+            default => '',
+        };
+
+        return new Queue(
+            new SqsClient($config),
+            $queue,
+            $prefix
+        );
     }
 }

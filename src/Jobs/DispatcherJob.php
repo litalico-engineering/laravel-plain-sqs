@@ -1,66 +1,57 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Dusterio\PlainSqs\Jobs;
 
+use Dusterio\PlainSqs\ConfigHelper;
 use Illuminate\Bus\Queueable;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Support\Facades\Config;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 
 class DispatcherJob implements ShouldQueue
 {
-    use InteractsWithQueue, Queueable, SerializesModels;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
+
+    protected bool $plain = false;
 
     /**
-     * @var mixed
+     * @param array<array-key, string> $data
      */
-    protected $data;
-
-    /**
-     * @var bool
-     */
-    protected $plain = false;
-
-    /**
-     * DispatchedJob constructor.
-     * @param $data
-     */
-    public function __construct($data)
-    {
-        $this->data = $data;
+    public function __construct(
+        protected readonly array $data
+    ) {
     }
 
     /**
-     * @return mixed
+     * @return array<array-key, string>|array{job: string, data: array<array-key, string>}
      */
-    public function getPayload()
+    public function getPayload(): array
     {
-        if (! $this->isPlain()) {
-            return [
-                'job' => Config::get('sqs-plain.default-handler'),
-                'data' => $this->data
-            ];
+        if ($this->isPlain()) {
+            return $this->data;
         }
 
-        return $this->data;
+        return [
+            'job' => ConfigHelper::defaultHandler(),
+            'data' => $this->data,
+        ];
     }
 
     /**
-     * @param bool $plain
      * @return $this
      */
-    public function setPlain($plain = true)
+    public function setPlain(bool $plain = true): self
     {
         $this->plain = $plain;
 
         return $this;
     }
 
-    /**
-     * @return bool
-     */
-    public function isPlain()
+    public function isPlain(): bool
     {
         return $this->plain;
     }
